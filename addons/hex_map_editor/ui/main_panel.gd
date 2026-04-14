@@ -8,6 +8,7 @@ var map_data: HexMapData
 
 var input_cols: SpinBox
 var input_rows: SpinBox
+var lbl_bg_info: Label
 
 var brush_type: int = 0
 
@@ -28,6 +29,7 @@ func _init() -> void:
 	sidebar.add_child(title)
 	
 	_create_brush_button("Brush: Erase Hex (-1)", -1)
+	_create_brush_button("Brush: Placeholder", HexCell.TerrainType.PLACEHOLDER)
 	_create_brush_button("Brush: Plan (X.trắng)", HexCell.TerrainType.PLAN)
 	_create_brush_button("Brush: Water (Xanh)", HexCell.TerrainType.WATER)
 	_create_brush_button("Brush: Wall (Xám)", HexCell.TerrainType.WALL)
@@ -52,14 +54,16 @@ func _init() -> void:
 	btn_clear.pressed.connect(_on_clear_pressed)
 	sidebar.add_child(btn_clear)
 	
+	sidebar.add_child(HSeparator.new())
+	
 	# Inputs cho Cols, Rows
 	var hbox_cols = HBoxContainer.new()
 	var lbl_cols = Label.new()
 	lbl_cols.text = "Cols:"
 	input_cols = SpinBox.new()
 	input_cols.min_value = 1
-	input_cols.max_value = 500
-	input_cols.value = 15
+	input_cols.max_value = 1000
+	input_cols.value = 25
 	hbox_cols.add_child(lbl_cols)
 	hbox_cols.add_child(input_cols)
 	sidebar.add_child(hbox_cols)
@@ -69,16 +73,27 @@ func _init() -> void:
 	lbl_rows.text = "Rows:"
 	input_rows = SpinBox.new()
 	input_rows.min_value = 1
-	input_rows.max_value = 500
-	input_rows.value = 10
+	input_rows.max_value = 1000
+	input_rows.value = 20
 	hbox_rows.add_child(lbl_rows)
 	hbox_rows.add_child(input_rows)
 	sidebar.add_child(hbox_rows)
+	
+	lbl_bg_info = Label.new()
+	lbl_bg_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl_bg_info.modulate = Color(0.6, 0.8, 1.0)
+	lbl_bg_info.text = "BG Size Info: "
+	sidebar.add_child(lbl_bg_info)
 
 	var btn_generate = Button.new()
 	btn_generate.text = "Generate Grid"
 	btn_generate.pressed.connect(_on_generate_pressed)
 	sidebar.add_child(btn_generate)
+	
+	var lbl_help = Label.new()
+	lbl_help.text = "Controls:\n- L-Click: Draw\n- R-Click/Mid: Pan Map\n- Scroll: Zoom"
+	lbl_help.modulate = Color(0.7, 0.7, 0.7)
+	sidebar.add_child(lbl_help)
 
 	# Scroll Area
 	scroll_container = ScrollContainer.new()
@@ -107,19 +122,24 @@ func _create_brush_button(text: String, type: int):
 	btn.pressed.connect(func(): brush_type = type)
 	sidebar.add_child(btn)
 
+func _update_bg_info(width: int, height: int):
+	var req_width = 120 * (width - 1) + 160
+	var req_height = 80 * (height - 1) + 80
+	lbl_bg_info.text = "Trải Grid %dx%d ô.\nBạn hãy chèn ảnh Background kích thước tương đối: %d x %d px" % [width, height, req_width, req_height]
+
 func _init_empty_map():
 	map_data.clear_cells()
 	var width = int(input_cols.value)
 	var height = int(input_rows.value)
-	var hw = width / 2
-	var hh = height / 2
 	
-	for col in range(-hw, width - hw):
+	for col in range(width):
 		var col_offset = int(floor(col / 2.0))
-		for row in range(-hh - col_offset, height - hh - col_offset):
+		for row in range(-col_offset, height - col_offset):
 			var cell = HexCell.new(col, row)
-			cell.terrain_type = HexCell.TerrainType.PLAN
+			cell.terrain_type = HexCell.TerrainType.PLACEHOLDER
 			map_data.add_or_update_cell(col, row, cell)
+			
+	_update_bg_info(width, height)
 
 func _on_hex_painted(q: int, r: int):
 	if brush_type == -1:
@@ -133,9 +153,7 @@ func _on_save_pressed():
 	var save_path = "res://test_hex_map.json"
 	var file = FileAccess.open(save_path, FileAccess.WRITE)
 	if file:
-		# Lấy dict và chuyển thành string
 		var data_dict = map_data.to_dict()
-		# Có thể lưu thêm meta thông tin rows, cols
 		data_dict["cols"] = int(input_cols.value)
 		data_dict["rows"] = int(input_rows.value)
 		
@@ -161,6 +179,8 @@ func _on_load_pressed():
 				input_cols.value = float(json.data["cols"])
 			if json.data.has("rows"):
 				input_rows.value = float(json.data["rows"])
+			
+			_update_bg_info(int(input_cols.value), int(input_rows.value))
 			grid_draw.map_data = map_data
 			grid_draw.queue_redraw()
 			print("HexMapEditor: Loaded json map from ", save_path)

@@ -3,15 +3,16 @@ class_name HexCell
 extends Resource
 
 enum TerrainType {
-	PLAN = 1,      # Xám trắng
-	WATER = 2,     # Xanh dương
-	WALL = 3,      # Xám
-	CAPITAL = 4    # Trắng
+	PLACEHOLDER = 0, # Placeholder mặc định
+	PLAN = 1,        # Xám trắng
+	WATER = 2,       # Xanh dương
+	WALL = 3,        # Xám
+	CAPITAL = 4      # Trắng
 }
 
 @export var q: int = 0
 @export var r: int = 0
-@export var terrain_type: TerrainType = TerrainType.PLAN
+@export var terrain_type: TerrainType = TerrainType.PLACEHOLDER
 @export var custom_properties: Dictionary = {}
 
 func _init(_q: int = 0, _r: int = 0) -> void:
