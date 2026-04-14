@@ -6,6 +6,9 @@ var scroll_container: ScrollContainer
 var grid_draw: Control
 var map_data: HexMapData
 
+var input_cols: SpinBox
+var input_rows: SpinBox
+
 var brush_type: int = 0
 
 func _init() -> void:
@@ -24,20 +27,21 @@ func _init() -> void:
 	title.text = "Hex Editor Toolbar"
 	sidebar.add_child(title)
 	
-	_create_brush_button("Brush: Visible (Highlight)", HexCell.TerrainType.VISIBLE)
-	_create_brush_button("Brush: Hidden (Dark)", HexCell.TerrainType.HIDDEN)
-	_create_brush_button("Brush: Unwalkable (Red)", HexCell.TerrainType.UNWALKABLE)
-	_create_brush_button("Brush: Water (Blue)", HexCell.TerrainType.WATER)
+	_create_brush_button("Brush: Erase Hex (-1)", -1)
+	_create_brush_button("Brush: Plan (X.trắng)", HexCell.TerrainType.PLAN)
+	_create_brush_button("Brush: Water (Xanh)", HexCell.TerrainType.WATER)
+	_create_brush_button("Brush: Wall (Xám)", HexCell.TerrainType.WALL)
+	_create_brush_button("Brush: Capital (Trắng)", HexCell.TerrainType.CAPITAL)
 
 	sidebar.add_child(HSeparator.new())
 
 	var btn_save = Button.new()
-	btn_save.text = "Save Map (.tres)"
+	btn_save.text = "Save Map (.json)"
 	btn_save.pressed.connect(_on_save_pressed)
 	sidebar.add_child(btn_save)
 
 	var btn_load = Button.new()
-	btn_load.text = "Load Map (.tres)"
+	btn_load.text = "Load Map (.json)"
 	btn_load.pressed.connect(_on_load_pressed)
 	sidebar.add_child(btn_load)
 	
@@ -48,8 +52,31 @@ func _init() -> void:
 	btn_clear.pressed.connect(_on_clear_pressed)
 	sidebar.add_child(btn_clear)
 	
+	# Inputs cho Cols, Rows
+	var hbox_cols = HBoxContainer.new()
+	var lbl_cols = Label.new()
+	lbl_cols.text = "Cols:"
+	input_cols = SpinBox.new()
+	input_cols.min_value = 1
+	input_cols.max_value = 500
+	input_cols.value = 15
+	hbox_cols.add_child(lbl_cols)
+	hbox_cols.add_child(input_cols)
+	sidebar.add_child(hbox_cols)
+	
+	var hbox_rows = HBoxContainer.new()
+	var lbl_rows = Label.new()
+	lbl_rows.text = "Rows:"
+	input_rows = SpinBox.new()
+	input_rows.min_value = 1
+	input_rows.max_value = 500
+	input_rows.value = 10
+	hbox_rows.add_child(lbl_rows)
+	hbox_rows.add_child(input_rows)
+	sidebar.add_child(hbox_rows)
+
 	var btn_generate = Button.new()
-	btn_generate.text = "Generate Default Grid"
+	btn_generate.text = "Generate Grid"
 	btn_generate.pressed.connect(_on_generate_pressed)
 	sidebar.add_child(btn_generate)
 
@@ -82,41 +109,65 @@ func _create_brush_button(text: String, type: int):
 
 func _init_empty_map():
 	map_data.clear_cells()
-	# Tạo lưới hình chữ nhật 15x10 ô
-	var width = 15
-	var height = 10
-	var hw = width / 2 # 7
-	var hh = height / 2 # 5
+	var width = int(input_cols.value)
+	var height = int(input_rows.value)
+	var hw = width / 2
+	var hh = height / 2
 	
 	for col in range(-hw, width - hw):
 		var col_offset = int(floor(col / 2.0))
 		for row in range(-hh - col_offset, height - hh - col_offset):
 			var cell = HexCell.new(col, row)
-			# Mặc định hiển thị lưới để dễ thao tác ban đầu
-			cell.terrain_type = HexCell.TerrainType.VISIBLE
+			cell.terrain_type = HexCell.TerrainType.PLAN
 			map_data.add_or_update_cell(col, row, cell)
 
 func _on_hex_painted(q: int, r: int):
-	# Update or add if missing
-	var cell = HexCell.new(q, r)
-	cell.terrain_type = brush_type as HexCell.TerrainType
-	map_data.add_or_update_cell(q, r, cell)
+	if brush_type == -1:
+		map_data.remove_cell(q, r)
+	else:
+		var cell = HexCell.new(q, r)
+		cell.terrain_type = brush_type as HexCell.TerrainType
+		map_data.add_or_update_cell(q, r, cell)
 
 func _on_save_pressed():
-	var err = ResourceSaver.save(map_data, "res://test_hex_map.tres")
-	if err == OK:
-		print("HexMapEditor: Saved map to res://test_hex_map.tres")
+	var save_path = "res://test_hex_map.json"
+	var file = FileAccess.open(save_path, FileAccess.WRITE)
+	if file:
+		# Lấy dict và chuyển thành string
+		var data_dict = map_data.to_dict()
+		# Có thể lưu thêm meta thông tin rows, cols
+		data_dict["cols"] = int(input_cols.value)
+		data_dict["rows"] = int(input_rows.value)
+		
+		var json_str = JSON.stringify(data_dict, "\t")
+		file.store_string(json_str)
+		file.close()
+		print("HexMapEditor: Saved json map to ", save_path)
 	else:
-		print("HexMapEditor: Failed to save map. Error code: ", err)
+		print("HexMapEditor: Failed to save map to JSON")
 
 func _on_load_pressed():
-	if ResourceLoader.exists("res://test_hex_map.tres"):
-		map_data = ResourceLoader.load("res://test_hex_map.tres")
-		grid_draw.map_data = map_data
-		grid_draw.queue_redraw()
-		print("HexMapEditor: Loaded map from res://test_hex_map.tres")
+	var save_path = "res://test_hex_map.json"
+	if FileAccess.file_exists(save_path):
+		var file = FileAccess.open(save_path, FileAccess.READ)
+		var json_str = file.get_as_text()
+		file.close()
+		
+		var json = JSON.new()
+		var error = json.parse(json_str)
+		if error == OK:
+			map_data.from_dict(json.data)
+			if json.data.has("cols"):
+				input_cols.value = float(json.data["cols"])
+			if json.data.has("rows"):
+				input_rows.value = float(json.data["rows"])
+			grid_draw.map_data = map_data
+			grid_draw.queue_redraw()
+			print("HexMapEditor: Loaded json map from ", save_path)
+		else:
+			print("HexMapEditor: JSON Parse Error: ", json.get_error_message())
 	else:
-		print("HexMapEditor: Map file not found at res://test_hex_map.tres")
+		print("HexMapEditor: Map file not found at ", save_path)
 
 func _on_clear_pressed():
 	map_data.clear_cells()

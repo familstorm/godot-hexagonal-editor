@@ -57,14 +57,14 @@ func _draw() -> void:
         var edge_color = Color(0, 0, 0, 1.0)
         
         # Terrain Colors
-        if cell.terrain_type == HexCell.TerrainType.VISIBLE:
-            base_color = Color(0.8, 0.8, 0.8, 0.7) # White Highlight for Visible
-        elif cell.terrain_type == HexCell.TerrainType.HIDDEN:
-            base_color = Color(0.1, 0.1, 0.1, 0.7) # Dark
-        elif cell.terrain_type == HexCell.TerrainType.UNWALKABLE:
-            base_color = Color(0.8, 0.2, 0.2, 0.7) # Red
+        if cell.terrain_type == HexCell.TerrainType.PLAN:
+            base_color = Color(0.7, 0.7, 0.7, 0.7) # Xám trắng
         elif cell.terrain_type == HexCell.TerrainType.WATER:
-            base_color = Color(0.2, 0.4, 0.8, 0.7) # Blue
+            base_color = Color(0.2, 0.4, 0.8, 0.7) # Xanh dương
+        elif cell.terrain_type == HexCell.TerrainType.WALL:
+            base_color = Color(0.4, 0.4, 0.4, 0.7) # Xám
+        elif cell.terrain_type == HexCell.TerrainType.CAPITAL:
+            base_color = Color(1.0, 1.0, 1.0, 1.0) # Trắng tinh
             
         draw_colored_polygon(offset_corners, base_color)
         
