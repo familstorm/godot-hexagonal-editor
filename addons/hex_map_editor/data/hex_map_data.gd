@@ -32,9 +32,12 @@ func to_dict() -> Dictionary:
 	var cells_data = []
 	for cell in cells:
 		cells_data.append(cell.to_dict())
-	return {
+	var dict = {
 		"cells": cells_data
 	}
+	if background_texture and background_texture.resource_path:
+		dict["bg_path"] = background_texture.resource_path
+	return dict
 
 func from_dict(data: Dictionary) -> void:
 	cells.clear()
@@ -43,4 +46,13 @@ func from_dict(data: Dictionary) -> void:
 		var cell = HexCell.new()
 		cell.from_dict(c_data)
 		cells.append(cell)
+		
+	if data.has("bg_path"):
+		var bg_path = data["bg_path"]
+		if ResourceLoader.exists(bg_path):
+			background_texture = ResourceLoader.load(bg_path)
+		else:
+			background_texture = null
+	else:
+		background_texture = null
 

@@ -9,6 +9,7 @@ var map_data: HexMapData
 var input_cols: SpinBox
 var input_rows: SpinBox
 var lbl_bg_info: Label
+var bg_picker: EditorResourcePicker
 
 var brush_type: int = 0
 
@@ -53,6 +54,17 @@ func _init() -> void:
 	btn_clear.text = "Clear Grid"
 	btn_clear.pressed.connect(_on_clear_pressed)
 	sidebar.add_child(btn_clear)
+	
+	sidebar.add_child(HSeparator.new())
+	
+	var lbl_bg = Label.new()
+	lbl_bg.text = "Background Image:"
+	sidebar.add_child(lbl_bg)
+	
+	bg_picker = EditorResourcePicker.new()
+	bg_picker.base_type = "Texture2D"
+	bg_picker.resource_changed.connect(_on_bg_picked)
+	sidebar.add_child(bg_picker)
 	
 	sidebar.add_child(HSeparator.new())
 	
@@ -141,6 +153,10 @@ func _init_empty_map():
 			
 	_update_bg_info(width, height)
 
+func _on_bg_picked(resource: Resource):
+	map_data.background_texture = resource as Texture2D
+	grid_draw.queue_redraw()
+
 func _on_hex_painted(q: int, r: int):
 	if brush_type == -1:
 		map_data.remove_cell(q, r)
@@ -179,6 +195,8 @@ func _on_load_pressed():
 				input_cols.value = float(json.data["cols"])
 			if json.data.has("rows"):
 				input_rows.value = float(json.data["rows"])
+			
+			bg_picker.edited_resource = map_data.background_texture
 			
 			_update_bg_info(int(input_cols.value), int(input_rows.value))
 			grid_draw.map_data = map_data
